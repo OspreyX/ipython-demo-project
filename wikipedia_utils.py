@@ -96,7 +96,33 @@ def page_neighborhood(title):
 #does not work because ubuntu's libgdal-dev is out of date.
 #!CPLUS_INCLUDE_PATH=/usr/include/gdal C_INCLUDE_PATH=/usr/include/gdal pip install GDAL==1.9.0
 import kartograph
-  
+
+
+# Word cloud
+# !pip install git+https://github.com/amueller/word_cloud
+from os import path
+import matplotlib.pyplot as plt
+from wordcloud import WordCloud
+import vincent
+vincent.initialize_notebook()
+
+# Read the whole text.
+text = open('constitution.txt').read()
+alice_mask = imread("wikipedia.jpg")
+# wget http://logodatabases.com/wp-content/uploads/2012/03/wikipedia-w-logo-1024x1024.png
+# but it is a jpg.
+wordcloud = WordCloud(background_color='white', mask=alice_mask[:,:,0]).generate(text)
+
+words = wordcloud.words_
+n = np.array([word[1] for word in words])
+normalize = lambda x: int(x / (n.max() - n.min()) * 90 + 10)
+word_list = {k: normalize(v) for k, v in words}
+
+# Encodes for each word the string, font size, position, orientation and color.
+# layout = wordcloud.layout_
+
+
+
 # Folium at least works
 # !pip install --upgrade git+https://github.com/apatil/folium
 import folium
