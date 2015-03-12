@@ -89,6 +89,14 @@ def page_neighborhood(title):
   
   show(p)
 
+# Kartograph
+#!pip install git+https://github.com/kartograph/kartograph.py  
+#!pip install tinycss
+#yuck, bundle gdal from pypi into image. The latest version
+#does not work because ubuntu's libgdal-dev is out of date.
+#!CPLUS_INCLUDE_PATH=/usr/include/gdal C_INCLUDE_PATH=/usr/include/gdal pip install GDAL==1.9.0
+import kartograph
+  
 # Folium at least works
 # !pip install --upgrade git+https://github.com/apatil/folium
 import folium
@@ -100,9 +108,8 @@ map_1.create_map(path='/cdn/mthood.html')
 from IPython.display import HTML
 HTML("<iframe src=mthood.html width=1200px height=600px>")
 
-# mapping: https://github.com/python-visualization/folium
 
-# plots: bokeh, vincent, gal.js
+# bokeh time series attempt doesnt work well
 import time
 from numpy import cumprod, linspace, random
 from bokeh.plotting import *
@@ -140,9 +147,11 @@ show(r)
 #show(c)  # open a browser
 
 
-# nvd3: great charts, but asset paths not relocatable.
-# !pip install --upgrade git+https://github.com/areski/python-nvd3
+
+# nvd3: patch should make it workable, try iframing it.
+# !pip install --upgrade git+https://github.com/apatil/python-nvd3
 import nvd3
+nvd3.ipynb.initialize_javascript(use_remote=True)
 type = 'stackedAreaChart'
 chart2 = nvd3.stackedAreaChart(name=type,height=450,use_interactive_guideline=True)
 nb_element = 50
