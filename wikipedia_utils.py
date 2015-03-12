@@ -1,40 +1,45 @@
 # !pip install wikitools
 # !pip install bokeh
 # !pip install git+https://github.com/amueller/word_cloud
-# !pip install git+https://github.com/wrobstory/vincent
+# !pip install --upgrade --no-deps git+https://github.com/wrobstory/vincent
+# !pip install --upgrade git+https://github.com/apatil/folium
+# !pip install --upgrade git+https://github.com/apatil/python-nvd3
 
-from collections import OrderedDict
+import bokeh
+from bokeh import plotting
+bokeh.plotting.output_notebook() # Tell bokeh to ouptut directly to the console
 
-import numpy as np
+import nvd3
+# nvd3.ipynb.initialize_javascript(use_remote=True)
 
-from bokeh.plotting import *
-output_notebook() # Tell bokeh to ouptut directly to the console
-
-from bokeh.models import HoverTool, ColumnDataSource
-from bokeh.sampledata.les_mis import data
-
-
-from wordcloud import WordCloud
 import vincent
 vincent.initialize_notebook()
 
-from wikitools import wiki
-from wikitools import api
-site = wiki.Wiki("http://en.wikipedia.org/w/api.php") 
+import folium
+# folium.initialize_notebook()
+
+from collections import OrderedDict
+import wordcloud
+import numpy as np
+
+import wikitools
+site = wikitools.wiki.Wiki("http://en.wikipedia.org/w/api.php") 
 
 def page_links(title):
   # define the params for the query
-  params = {
-            "action":"query", 
-            "format":"json",
-            "prop": "links",
-            "pllimit": 100,
-            "titles": title
-           }
-  request = api.APIRequest(site, params)
-  result = request.query()
-  links = result["query"]["pages"].values()[0]["links"]
-  return [{"src": title, "target": link["title"]} for link in links]
+#  params = {
+#            "action":"query", 
+#            "format":"json",
+#            "prop": "links",
+#            "pllimit": 100,
+#            "titles": title
+#           }
+#  request = wikitools.api.APIRequest(site, params)
+#  result = request.query()
+#  links = result["query"]["pages"].values()[0]["links"]
+#  return [{"src": title, "target": link["title"]} for link in links]
+  links = wikitools.page.Page(site, title).getLinks()
+  return [{"src": title, "target": link} for link in links]
 
 def page_neighborhood_links(page, include_original=False):
   links = page_links(page)
@@ -64,7 +69,7 @@ def page_neighborhood(title):
   
   name_mat = np.tile(names, (N,1))
   
-  source = ColumnDataSource(
+  source = bokeh.models.ColumnDataSource(
       data=dict(
           colors=colors,
           xname=name_mat.flatten(),
@@ -72,7 +77,7 @@ def page_neighborhood(title):
       )
   )
   
-  p = figure(title="Wikipedia Neighborhood of %s" % title,
+  p = bokeh.plotting.figure(title="Wikipedia Neighborhood of %s" % title,
       x_axis_location="above", tools="resize,hover,save",
       x_range=list(reversed(names)), y_range=names)
   p.plot_width = 800
@@ -88,29 +93,29 @@ def page_neighborhood(title):
   p.axis.major_label_standoff = 0
   p.xaxis.major_label_orientation = np.pi/3
   
-  hover = p.select(dict(type=HoverTool))
+  hover = p.select(dict(type=bokeh.models.HoverTool))
   hover.tooltips = OrderedDict([
       ('titles', '@yname, @xname')
   ])
   
-  show(p)
-
-# Kartograph
-#!pip install git+https://github.com/kartograph/kartograph.py  
-#!pip install tinycss
-#yuck, bundle gdal from pypi into image. The latest version
-#does not work because ubuntu's libgdal-dev is out of date.
-#!CPLUS_INCLUDE_PATH=/usr/include/gdal C_INCLUDE_PATH=/usr/include/gdal pip install GDAL==1.9.0
-import kartograph
+  bokeh.plotting.show(p)
+page_neighborhood("David Blackwell")  
 
 
 # Word cloud
-def vincent_wordcloud(text):
+def vincent_wordcloud(title):
+  text = wikitools.page.Page(site, title).getWikiText()
 
   # mask may or may not work with Vincent.
-  wordcloud = WordCloud(background_color='white').generate(text)
+  stopwords = wordcloud.STOPWORDS
+  stopwords.add("ref")
+  stopwords.add("cite")
+  stopwords.add("date")
+  stopwords.add("pp")
   
-  words = wordcloud.words_
+  wc = wordcloud.WordCloud(background_color='white').generate(text)
+  
+  words = wc.words_
   #Encodes for each word the string, font size, position, orientation and color.
   #layout = wordcloud.layout_
   
@@ -124,143 +129,40 @@ def vincent_wordcloud(text):
     mark.properties.update.fill = vincent.ValueRef(field='data.idx', scale='color')
 
   return w
-# Read the whole text.
-text = open('constitution.txt').read()
-vincent_wordcloud(text)
+vincent_wordcloud("Python (programming language)")
+
 
 # Folium at least works
-# !pip install --upgrade git+https://github.com/apatil/folium
-import folium
-map_1 = folium.Map(location=[45.372, -121.6972], zoom_start=12,
-                   tiles='Stamen Terrain')
-map_1.simple_marker([45.3288, -121.6625], popup='Mt. Hood Meadows')
-map_1.simple_marker([45.3311, -121.7113], popup='Timberline Lodge')
-map_1.create_map(path='/cdn/mthood.html')
-from IPython.display import HTML
-HTML("<iframe src=mthood.html width=1200px height=600px>")
-
-
-# bokeh time series attempt doesnt work well
-import time
-from numpy import cumprod, linspace, random
-from bokeh.plotting import *
-num_points = 300
-
-now = time.time()
-dt = 24*3600 # days in seconds
-dates = linspace(now, now + num_points*dt, num_points) * 1000 # times in ms
-acme = cumprod(random.lognormal(0.0, 0.04, size=num_points))
-choam = cumprod(random.lognormal(0.0, 0.04, size=num_points))
-
-TOOLS = "pan,wheel_zoom,box_zoom,reset,save,hover"
-output_file("correlation.html", title="correlation.py example")
-
-r = figure(x_axis_type = "datetime", tools=TOOLS)
-r.line(dates, acme, color='#1F78B4', legend='ACME')
-r.line(dates, choam, color='#FB9A99', legend='CHOAM')
-r.title = "Stock Returns"
-r.grid.grid_line_alpha=0.
-
-hover = r.select(dict(type=HoverTool))
-
-hover.tooltips = [
-    # add to this
-    ("value", "$y"),
-]
-
-show(r)
-
-#c = figure(tools=TOOLS)
-#c.circle(acme, choam, color='#A6CEE3', legend='close')
-#c.title = "ACME / CHOAM Correlations"
-#c.grid.grid_line_alpha=0.3
-
-#show(c)  # open a browser
-
-
-
-# nvd3: patch should make it workable, try iframing it.
-# !pip install --upgrade git+https://github.com/apatil/python-nvd3
-import nvd3
-nvd3.ipynb.initialize_javascript(use_remote=True)
-type = 'stackedAreaChart'
-chart2 = nvd3.stackedAreaChart(name=type,height=450,use_interactive_guideline=True)
-nb_element = 50
-xdata = range(nb_element)
-ydata = [i * random.randint(1, 10) for i in range(nb_element)]
-ydata2 = [x * 2 for x in ydata]
-ydata3 = [x * 5 for x in ydata]
-chart2.add_serie(name="serie 1", y=ydata, x=xdata)
-chart2.add_serie(name="serie 2", y=ydata2, x=xdata)
-chart2.add_serie(name="serie 3", y=ydata3, x=xdata)
-chart2.buildhtml()
-chart2
-
-
-# networkx: doesn't dump standalone html.
-# !pip install networkx
-import json
-import networkx as nx
-from networkx.readwrite import json_graph
-G = nx.barbell_graph(6,3)
-# this d3 example uses the name attribute for the mouse-hover value,
-# so add a name to each node
-for n in G:
-    G.node[n]['name'] = n
-# write json formatted data
-d = json_graph.node_link_data(G) # node-link format to serialize
-# write json
-json.dump(d, open('/cdn/force.json','w'))
-print('Wrote node-link JSON data to /cdn/force.json')
-# open URL in running web browser
-
-
-# time series: wrobstory/bearcat, http://bl.ocks.org/wrobstory/raw/5538300/
-import bearcart
-import pandas as pd
-def bearcart_plot():
-  import os
-  os.chdir('/cdn')
-  price = pd.DataFrame({'AAPL': np.cumsum(np.random.normal(size=100)), 
-                        'GOOG': np.cumsum(np.random.normal(size=100))})
-  
-  vis = bearcart.Chart(price, plt_type='area', x_time=False, auto_resize=True)
-  vis.create_chart(html_path='index.html')
+def nearby_articles():
+  map_1 = folium.Map(location=[45.372, -121.6972], zoom_start=12,
+                     tiles='Stamen Terrain')
+  map_1.simple_marker([45.3288, -121.6625], popup='Mt. Hood Meadows')
+  map_1.simple_marker([45.3311, -121.7113], popup='Timberline Lodge')
+  map_1.create_map(path='/cdn/mthood.html')
   from IPython.display import HTML
-  HTML("<iframe src=index.html width=640px height=380px>")
-
+  return HTML("<iframe src=mthood.html width=1200px height=600px>")
   
-# pygal: works ok, but interaction/tooltips don't work
-#!pip install pygal
-import pygal
-from pygal.style import LightStyle
-stackedline_chart = pygal.StackedLine(fill=True, style=LightStyle)
-stackedline_chart.title = 'Browser usage evolution (in %)'
-stackedline_chart.x_labels = map(str, range(2002, 2013))
-stackedline_chart.add('Firefox', [None, None, 0, 16.6,   25,   31, 36.4, 45.5, 46.3, 42.8, 37.1])
-stackedline_chart.add('Chrome',  [None, None, None, None, None, None,    0,  3.9, 10.8, 23.8, 35.3])
-stackedline_chart.add('IE',      [85.8, 84.6, 84.7, 74.5,   66, 58.6, 54.7, 44.8, 36.2, 26.6, 20.1])
-stackedline_chart.add('Others',  [14.2, 15.4, 15.3,  8.9,    9, 10.4,  8.9,  5.8,  6.7,  6.8,  7.5])
-stackedline_chart
+  #c = figure(tools=TOOLS)
+  #c.circle(acme, choam, color='#A6CEE3', legend='close')
+  #c.title = "ACME / CHOAM Correlations"
+  #c.grid.grid_line_alpha=0.3
+  
+  #show(c)  # open a browser
+nearby_articles()
 
-
-#!pip install --upgrade --no-deps git+https://github.com/wrobstory/vincent
-import vincent
-import pandas as pd
-import random
-
-#Iterable
-list_data = [10, 20, 30, 20, 15, 30, 45]
-
-#Dicts of iterables
-cat_1 = ['y1', 'y2', 'y3', 'y4']
-index_1 = range(0, 21, 1)
-multi_iter1 = {'index': index_1}
-for cat in cat_1:
-    multi_iter1[cat] = [random.randint(10, 100) for x in index_1]
-
-bar = vincent.Bar(multi_iter1['y1'])
-bar.axis_titles(x='Index', y='Value')
-bar.to_json('vega.json')
-from IPython.display import HTML
-HTML("<iframe src=vega_template.html width=1200px height=600px>")
+def stacked_ts():
+  type = 'stackedAreaChart'
+  chart2 = nvd3.stackedAreaChart(name=type,height=450,width=600,use_interactive_guideline=True)
+  nb_element = 50
+  xdata = range(nb_element)
+  ydata = [i * random.randint(1, 10) for i in range(nb_element)]
+  ydata2 = [x * 2 for x in ydata]
+  ydata3 = [x * 5 for x in ydata]
+  chart2.add_serie(name="serie 1", y=ydata, x=xdata)
+  chart2.add_serie(name="serie 2", y=ydata2, x=xdata)
+  chart2.add_serie(name="serie 3", y=ydata3, x=xdata)
+  chart2.buildhtml()
+  file("/cdn/chart.html", "w").write(chart2.htmlcontent)
+  from IPython.display import HTML
+  return HTML("<iframe src=chart.html width=800px height=550px>")
+stacked_ts()
