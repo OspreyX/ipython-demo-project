@@ -1,6 +1,7 @@
 # !pip install wikitools
 # !pip install bokeh
-# !pip install --upgrade git+https://github.com/apatil/bearcart.git
+# !pip install git+https://github.com/amueller/word_cloud
+# !pip install git+https://github.com/wrobstory/vincent
 
 from collections import OrderedDict
 
@@ -11,6 +12,11 @@ output_notebook() # Tell bokeh to ouptut directly to the console
 
 from bokeh.models import HoverTool, ColumnDataSource
 from bokeh.sampledata.les_mis import data
+
+
+from wordcloud import WordCloud
+import vincent
+vincent.initialize_notebook()
 
 from wikitools import wiki
 from wikitools import api
@@ -99,29 +105,28 @@ import kartograph
 
 
 # Word cloud
-# !pip install git+https://github.com/amueller/word_cloud
-from os import path
-import matplotlib.pyplot as plt
-from wordcloud import WordCloud
-import vincent
-vincent.initialize_notebook()
+def vincent_wordcloud(text):
 
+  # mask may or may not work with Vincent.
+  wordcloud = WordCloud(background_color='white').generate(text)
+  
+  words = wordcloud.words_
+  #Encodes for each word the string, font size, position, orientation and color.
+  #layout = wordcloud.layout_
+  
+  normalize = lambda x: int(x * 90 + 10)
+  word_list = {word: normalize(size) for word, size in words}
+  w = vincent.Word(word_list)
+  for mark in w.marks:
+    mark.properties.hover = vincent.PropertySet()
+    mark.properties.hover.fill = vincent.ValueRef(value='red')
+    mark.properties.update = vincent.PropertySet()
+    mark.properties.update.fill = vincent.ValueRef(field='data.idx', scale='color')
+
+  return w
 # Read the whole text.
 text = open('constitution.txt').read()
-alice_mask = imread("wikipedia.jpg")
-# wget http://logodatabases.com/wp-content/uploads/2012/03/wikipedia-w-logo-1024x1024.png
-# but it is a jpg.
-wordcloud = WordCloud(background_color='white', mask=alice_mask[:,:,0]).generate(text)
-
-words = wordcloud.words_
-n = np.array([word[1] for word in words])
-normalize = lambda x: int(x / (n.max() - n.min()) * 90 + 10)
-word_list = {k: normalize(v) for k, v in words}
-
-# Encodes for each word the string, font size, position, orientation and color.
-# layout = wordcloud.layout_
-
-
+vincent_wordcloud(text)
 
 # Folium at least works
 # !pip install --upgrade git+https://github.com/apatil/folium
