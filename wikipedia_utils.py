@@ -4,6 +4,7 @@
 # !pip install --upgrade --no-deps git+https://github.com/wrobstory/vincent
 # !pip install --upgrade git+https://github.com/apatil/folium
 # !pip install --upgrade git+https://github.com/apatil/python-nvd3
+# !pip install geopy
 
 import bokeh
 from bokeh import plotting
@@ -16,6 +17,7 @@ import vincent
 vincent.initialize_notebook()
 
 import folium
+import geopy
 # folium.initialize_notebook()
 
 from collections import OrderedDict
@@ -25,19 +27,9 @@ import numpy as np
 import wikitools
 site = wikitools.wiki.Wiki("http://en.wikipedia.org/w/api.php") 
 
+import IPython
+
 def page_links(title):
-  # define the params for the query
-#  params = {
-#            "action":"query", 
-#            "format":"json",
-#            "prop": "links",
-#            "pllimit": 100,
-#            "titles": title
-#           }
-#  request = wikitools.api.APIRequest(site, params)
-#  result = request.query()
-#  links = result["query"]["pages"].values()[0]["links"]
-#  return [{"src": title, "target": link["title"]} for link in links]
   links = wikitools.page.Page(site, title).getLinks()
   return [{"src": title, "target": link} for link in links]
 
@@ -133,22 +125,28 @@ vincent_wordcloud("Python (programming language)")
 
 
 # Folium at least works
-def nearby_articles():
-  map_1 = folium.Map(location=[45.372, -121.6972], zoom_start=12,
-                     tiles='Stamen Terrain')
-  map_1.simple_marker([45.3288, -121.6625], popup='Mt. Hood Meadows')
-  map_1.simple_marker([45.3311, -121.7113], popup='Timberline Lodge')
-  map_1.create_map(path='/cdn/mthood.html')
-  from IPython.display import HTML
-  return HTML("<iframe src=mthood.html width=1200px height=600px>")
+def nearby_articles(place, radius=10000):
+  location = geopy.geocoders.GoogleV3().geocode(place)
   
-  #c = figure(tools=TOOLS)
-  #c.circle(acme, choam, color='#A6CEE3', legend='close')
-  #c.title = "ACME / CHOAM Correlations"
-  #c.grid.grid_line_alpha=0.3
+  map_widget = folium.Map(location=[location.latitude, location.longitude], zoom_start=17, tiles='Stamen Toner')
+
+  params = {
+            "action":"query", 
+            "format":"json",
+            "list": "geosearch",
+            "gsradius": radius,
+            "gscoord": "%s|%s" % (location.latitude, location.longitude)
+           }
+  request = wikitools.api.APIRequest(site, params)
+  result = request.query()
   
-  #show(c)  # open a browser
-nearby_articles()
+  for page in result["query"]["geosearch"]:  
+    map_widget.simple_marker([page["lat"], page["lon"]], popup=page["title"])
+  fname = "map_widget_%s.html" % place
+  map_widget.create_map(path="/cdn/%s" % fname)
+  return IPython.display.HTML("<iframe src='%s' width=1200px height=600px>" % fname)
+
+nearby_articles("Trondheim")
 
 def stacked_ts():
   type = 'stackedAreaChart'
@@ -163,6 +161,5 @@ def stacked_ts():
   chart2.add_serie(name="serie 3", y=ydata3, x=xdata)
   chart2.buildhtml()
   file("/cdn/chart.html", "w").write(chart2.htmlcontent)
-  from IPython.display import HTML
-  return HTML("<iframe src=chart.html width=800px height=550px>")
+  return IPython.display.HTML("<iframe src=chart.html width=800px height=550px>")
 stacked_ts()
