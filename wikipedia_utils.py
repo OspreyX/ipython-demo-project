@@ -23,6 +23,8 @@ import geopy
 from collections import OrderedDict
 import wordcloud
 import numpy as np
+import pandas
+import time
 
 import wikitools
 site = wikitools.wiki.Wiki("http://en.wikipedia.org/w/api.php") 
@@ -148,18 +150,57 @@ def nearby_articles(place, radius=10000):
 
 nearby_articles("Trondheim")
 
-def stacked_ts():
-  type = 'stackedAreaChart'
-  chart2 = nvd3.stackedAreaChart(name=type,height=450,width=600,use_interactive_guideline=True)
-  nb_element = 50
-  xdata = range(nb_element)
-  ydata = [i * random.randint(1, 10) for i in range(nb_element)]
-  ydata2 = [x * 2 for x in ydata]
-  ydata3 = [x * 5 for x in ydata]
-  chart2.add_serie(name="serie 1", y=ydata, x=xdata)
-  chart2.add_serie(name="serie 2", y=ydata2, x=xdata)
-  chart2.add_serie(name="serie 3", y=ydata3, x=xdata)
-  chart2.buildhtml()
-  file("/cdn/chart.html", "w").write(chart2.htmlcontent)
+get.revision.series <- function(page) {
+  response <- GET("http://en.wikipedia.org/w/api.php?", query=list(
+    format="json",
+    action="query",
+    prop="revisions",
+    titles=page,
+    rvprop="timestamp|user",
+    rvlimit=1000
+  ))
+  pages <- httr::content(response, "parsed")$query$pages
+  revisions <- pages[[names(pages)[[1]]]]$revisions
+  timestamp <- revisions %>% purrr::map(~ .$timestamp) %>% unlist
+  ct <- as.POSIXct(timestamp, format = "%Y-%m-%d")
+  ts <- xts(rep(1, length(ct)), ct)
+  agg <- suppressWarnings(aggregate(as.zoo(ts), time(ts), sum))
+  xts(unlist(agg), time(agg))
+}
+
+def get_revision_series(title):
+  params = {
+            "action":"query", 
+            "format":"json",
+            "prop": "revisions",
+            "titles": title,
+            "rvprop": "timestamp|user",
+            "rvlimit": 1000
+           }
+  request = wikitools.api.APIRequest(site, params)
+  result = request.query()
+  revisions = result["query"]["pages"].values()[0]["revisions"]
+  timestamp = [np.datetime64(revision["timestamp"]) for revision in revisions]
+  s = pandas.DataFrame(1, index=timestamp, columns=['n']).resample('D', how='count')
+  return pandas.Series(np.asarray(s), index=[i[0] for i in s._index])
+
+def get_two_revision_series(title1, title2):
+  r1, r2 = [get_revision_series(title) for title in (title1, title2)]
+  common_start = np.max([r.index.min() for r in (r1, r2)])
+  common_end = np.max([r.index.max() for r in (r1, r2)])
+  ix = pandas.DatetimeIndex(start=common_start, end=common_end, freq='D')
+  return [r.reindex(ix, fill_value=0) for r in (r1, r2)]
+
+def compare_revisions(title1, title2):
+  chart = nvd3.stackedAreaChart(name='stackedAreaChart',height=450,width=600,use_interactive_guideline=True)
+  r1, r2 = get_two_revision_series(title1, title2)
+  
+  x = [int(time.mktime(idx.timetuple()) * 1000) for idx in r1.index]
+  y = [[int(count) for count in np.asarray(np.cumsum(r))] for r in [r1, r2]]
+  
+  chart.add_serie(name=title1, y=y[0], x=x, x_is_date=True,  x_axis_format="%d %b %Y")
+  chart.add_serie(name=title2, y=y[1], x=x, x_is_date=True,  x_axis_format="%d %b %Y")
+  chart.buildhtml()
+  file("/cdn/chart.html", "w").write(chart.htmlcontent)
   return IPython.display.HTML("<iframe src=chart.html width=800px height=550px>")
-stacked_ts()
+compare_revisions("J. K. Rowling", "George R. R. Martin")
