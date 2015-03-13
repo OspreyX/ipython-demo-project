@@ -150,24 +150,6 @@ def nearby_articles(place, radius=10000):
 
 nearby_articles("Trondheim")
 
-get.revision.series <- function(page) {
-  response <- GET("http://en.wikipedia.org/w/api.php?", query=list(
-    format="json",
-    action="query",
-    prop="revisions",
-    titles=page,
-    rvprop="timestamp|user",
-    rvlimit=1000
-  ))
-  pages <- httr::content(response, "parsed")$query$pages
-  revisions <- pages[[names(pages)[[1]]]]$revisions
-  timestamp <- revisions %>% purrr::map(~ .$timestamp) %>% unlist
-  ct <- as.POSIXct(timestamp, format = "%Y-%m-%d")
-  ts <- xts(rep(1, length(ct)), ct)
-  agg <- suppressWarnings(aggregate(as.zoo(ts), time(ts), sum))
-  xts(unlist(agg), time(agg))
-}
-
 def get_revision_series(title):
   params = {
             "action":"query", 
@@ -192,15 +174,18 @@ def get_two_revision_series(title1, title2):
   return [r.reindex(ix, fill_value=0) for r in (r1, r2)]
 
 def compare_revisions(title1, title2):
-  chart = nvd3.stackedAreaChart(name='stackedAreaChart',height=450,width=600,use_interactive_guideline=True)
+  chart = nvd3.stackedAreaChart(name='stackedAreaChart',height=450,width=600,use_interactive_guideline=True, x_is_date=True, date_format="%d %b %Y")
   r1, r2 = get_two_revision_series(title1, title2)
   
   x = [int(time.mktime(idx.timetuple()) * 1000) for idx in r1.index]
   y = [[int(count) for count in np.asarray(np.cumsum(r))] for r in [r1, r2]]
   
-  chart.add_serie(name=title1, y=y[0], x=x, x_is_date=True,  x_axis_format="%d %b %Y")
-  chart.add_serie(name=title2, y=y[1], x=x, x_is_date=True,  x_axis_format="%d %b %Y")
+  # looks like x_is_date is deprecated, actually use date_time=True,
+  # and who knows how you format x.
+  chart.add_serie(name=title1, y=y[0], x=x)
+  chart.add_serie(name=title2, y=y[1], x=x)
   chart.buildhtml()
-  file("/cdn/chart.html", "w").write(chart.htmlcontent)
-  return IPython.display.HTML("<iframe src=chart.html width=800px height=550px>")
+  fname = "chart_%s_%s.html" % (title1, title2)
+  file("/cdn/%s" % fname, "w").write(chart.htmlcontent)
+  IPython.display.HTML("<iframe src='%s' width=800px height=550px>" % fname)
 compare_revisions("J. K. Rowling", "George R. R. Martin")
