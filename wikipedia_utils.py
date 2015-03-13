@@ -93,7 +93,7 @@ def page_neighborhood(title):
   ])
   
   bokeh.plotting.show(p)
-page_neighborhood("David Blackwell")  
+
 
 
 # Word cloud
@@ -123,14 +123,13 @@ def vincent_wordcloud(title):
     mark.properties.update.fill = vincent.ValueRef(field='data.idx', scale='color')
 
   return w
-vincent_wordcloud("Python (programming language)")
 
 
 # Folium at least works
 def nearby_articles(place, radius=10000):
   location = geopy.geocoders.GoogleV3().geocode(place)
   
-  map_widget = folium.Map(location=[location.latitude, location.longitude], zoom_start=17, tiles='Stamen Toner')
+  map_widget = folium.Map(location=[location.latitude, location.longitude], zoom_start=14, tiles='Stamen Toner')
 
   params = {
             "action":"query", 
@@ -147,8 +146,6 @@ def nearby_articles(place, radius=10000):
   fname = "map_widget_%s.html" % place
   map_widget.create_map(path="/cdn/%s" % fname)
   return IPython.display.HTML("<iframe src='%s' width=1200px height=600px>" % fname)
-
-nearby_articles("Trondheim")
 
 def get_revision_series(title):
   params = {
@@ -187,5 +184,4 @@ def compare_revisions(title1, title2):
   chart.buildhtml()
   fname = "chart_%s_%s.html" % (title1, title2)
   file("/cdn/%s" % fname, "w").write(chart.htmlcontent)
-  IPython.display.HTML("<iframe src='%s' width=800px height=550px>" % fname)
-compare_revisions("J. K. Rowling", "George R. R. Martin")
+  return IPython.display.HTML("<iframe src='%s' width=800px height=550px>" % fname)
