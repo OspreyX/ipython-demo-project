@@ -36,7 +36,7 @@ def page_links(title):
   return [{"src": title, "target": link} for link in links]
 
 def page_neighborhood_links(page, include_original=False):
-  links = page_links(page)
+  links = [link for link in page_links(page) if ":" not in link["target"]]
   in_links = dict([(link["target"], True) for link in links])
   if include_original:
     in_links[page] = True
@@ -95,7 +95,6 @@ def page_neighborhood(title):
   bokeh.plotting.show(p)
 
 
-
 # Word cloud
 def vincent_wordcloud(title):
   text = wikitools.page.Page(site, title).getWikiText()
@@ -126,10 +125,10 @@ def vincent_wordcloud(title):
 
 
 # Folium at least works
-def nearby_articles(place, radius=10000):
+def nearby_articles(place, radius=10000, tiles='Stamen Toner'):
   location = geopy.geocoders.GoogleV3().geocode(place)
   
-  map_widget = folium.Map(location=[location.latitude, location.longitude], zoom_start=14, tiles='Stamen Toner')
+  map_widget = folium.Map(location=[location.latitude, location.longitude], zoom_start=14, tiles=tiles)
 
   params = {
             "action":"query", 
@@ -171,7 +170,7 @@ def get_two_revision_series(title1, title2):
   return [r.reindex(ix, fill_value=0) for r in (r1, r2)]
 
 def compare_revisions(title1, title2):
-  chart = nvd3.stackedAreaChart(name='stackedAreaChart',height=450,width=600,use_interactive_guideline=True, x_is_date=True, date_format="%d %b %Y")
+  chart = nvd3.stackedAreaChart(name='stackedAreaChart',height=450,width=800,use_interactive_guideline=True, x_is_date=True, date_format="%d %b %Y")
   r1, r2 = get_two_revision_series(title1, title2)
   
   x = [int(time.mktime(idx.timetuple()) * 1000) for idx in r1.index]
@@ -184,4 +183,4 @@ def compare_revisions(title1, title2):
   chart.buildhtml()
   fname = "chart_%s_%s.html" % (title1, title2)
   file("/cdn/%s" % fname, "w").write(chart.htmlcontent)
-  return IPython.display.HTML("<iframe src='%s' width=800px height=550px>" % fname)
+  return IPython.display.HTML("<iframe src='%s' width=1000px height=550px>" % fname)
