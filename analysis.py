@@ -1,28 +1,27 @@
 # Modern data visualization in Python
 # ===================================
 # 
-# One of the nicest side effects of the widespread adoption of [IPython notebooks](http://ipython.org/notebook.html)
-# in the Python community has been a bumper crop of rich interactive web graphics
-# libraries. This project shows some of the awesome things you can do with datasets
-# drawn from [Wikipedia](https://en.wikipedia.org).
+# One great side effect of the success of [IPython notebooks](http://ipython.org/notebook.html)
+# has been a bumper crop of rich interactive web graphics libraries. This project shows some of 
+# the awesome things you can do with datasets drawn from [Wikipedia](https://en.wikipedia.org).
 
 
 # Visualizing Wikipedia Neighborhoods
 # -----------------------------------
 #
-# Wikipedia's [public API](http://en.wikipedia.org/w/api.php) is an
-# incredibly interesting data source. 
+# Wikipedia's [public API](http://en.wikipedia.org/w/api.php) is an incredibly interesting data 
+# source. 
 #
 # We can use [bokeh](http://bokeh.pydata.org/en/latest/index.html)
 # to visualize the links between pages in a beautiful and
 # interactive way. Here's the [neighborhood](http://en.wikipedia.org/wiki/Neighbourhood_(graph_theory)
-# of the [BDFL](http://en.wikipedia.org/wiki/Benevolent_dictator_for_life).
+# of Python's [creator](http://en.wikipedia.org/wiki/Benevolent_dictator_for_life).
 # Each black square represents a pair of Wikipedia pages that are linked.
 
 from wikipedia_utils import *
 page_neighborhood("Guido van Rossum")
 
-# For a more meta experience, try `page.neighborhood("Adjacency matrix")`!
+# Try another topic, for example `page.neighborhood("Adjacency matrix")`!
 
 
 # Word clouds
@@ -32,9 +31,9 @@ page_neighborhood("Guido van Rossum")
 # a website. In addition to more standard plots, [vincent](https://github.com/wrobstory/vincent)
 # can create simple HTML word clouds. Let's see which words are most used in a Wikipedia page:
 
-vincent_wordcloud("Honey Badger")
+vincent_wordcloud("Pi")
 
-# Give it a try with your favorite animal.
+# Give it a try with your favorite number.
 
 
 # Mapping nearby pages
@@ -60,7 +59,7 @@ nearby_articles("Trondheim")
 # have been getting using the interactive time series library
 # [python-nvd3](https://github.com/areski/python-nvd3).
 
-compare_revisions("Mumbai", "Bangalore")
+compare_revisions("Alan Turing", "John von Neumann")
 
 # You can click the radio buttons to change the format of the plot.
 
